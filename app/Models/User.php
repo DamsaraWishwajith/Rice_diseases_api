@@ -30,4 +30,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the farmers for the supervisor.
+     */
+    public function farmers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Farmer::class, 'supervisor_id');
+    }
 }
