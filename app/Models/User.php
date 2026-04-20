@@ -38,4 +38,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Farmer::class, 'supervisor_id');
     }
+
+    /**
+     * Get the disease reports for the user.
+     */
+    public function diseaseReports(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DiseaseReport::class);
+    }
 }
