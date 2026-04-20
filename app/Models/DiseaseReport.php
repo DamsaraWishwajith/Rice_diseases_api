@@ -25,4 +25,12 @@ class DiseaseReport extends Model
     {
         return $this->belongsTo(Farmer::class);
     }
+
+    /**
+     * Get the disease information (solutions, etc) based on the disease name.
+     */
+    public function diseaseInfo()
+    {
+        return $this->hasOne(Disease::class, 'name', 'disease_name');
+    }
 }

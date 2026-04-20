@@ -18,6 +18,7 @@ Route::post('/disease-info', [DiseaseController::class, 'getDiseaseInfo']);
 
 Route::get('/disease-reports', [DiseaseReportController::class, 'index']);
 Route::post('/disease-reports', [DiseaseReportController::class, 'store']);
+Route::post('/get-supervisor-reports', [DiseaseReportController::class, 'getSupervisorReports']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
