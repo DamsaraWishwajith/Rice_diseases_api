@@ -83,7 +83,7 @@ class DiseaseReportController extends Controller
         $reports = DiseaseReport::with('farmer')
             ->where('user_id', $request->user_id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get(); 
 
         return response()->json($reports);
     }
