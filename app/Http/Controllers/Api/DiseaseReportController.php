@@ -20,6 +20,9 @@ class DiseaseReportController extends Controller
             'user_id'       => 'required|exists:users,id',
             'farmer_id'     => 'nullable|exists:farmers,id',
             'customer_note' => 'nullable|string',
+            'temp'          => 'nullable|numeric',
+            'hum'           => 'nullable|numeric',
+            'soil'          => 'nullable|integer',
         ];
 
         if ($request->has('disease_name') || $request->has('diseas_name')) {
@@ -59,6 +62,9 @@ class DiseaseReportController extends Controller
             'disease_name'  => $diseaseName,
             'disease_image' => $imagePath,
             'customer_note' => $request->customer_note,
+            'temp'          => $request->temp,
+            'hum'           => $request->hum,
+            'soil'          => $request->soil,
         ]);
 
         return response()->json([
@@ -140,6 +146,9 @@ class DiseaseReportController extends Controller
                 'customer_note' => $report->customer_note,
                 'recommend_solutions' => $solutions,
                 'created_at' => $report->created_at,
+                'temp' => $report->temp,
+                'hum' => $report->hum,
+                'soil' => $report->soil,
             ];
         });
 

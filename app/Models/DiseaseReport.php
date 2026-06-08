@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'farmer_id', 'disease_name', 'disease_image', 'customer_note'])]
+#[Fillable(['user_id', 'farmer_id', 'disease_name', 'disease_image', 'customer_note', 'temp', 'hum', 'soil'])]
 class DiseaseReport extends Model
 {
     /**
