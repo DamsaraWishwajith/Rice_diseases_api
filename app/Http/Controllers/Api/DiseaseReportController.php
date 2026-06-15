@@ -20,9 +20,6 @@ class DiseaseReportController extends Controller
             'user_id'       => 'required|exists:users,id',
             'farmer_id'     => 'nullable|exists:farmers,id',
             'customer_note' => 'nullable|string',
-            'temp'          => 'nullable|numeric',
-            'hum'           => 'nullable|numeric',
-            'soil'          => 'nullable|integer',
         ];
 
         if ($request->has('disease_name') || $request->has('diseas_name')) {
@@ -62,10 +59,26 @@ class DiseaseReportController extends Controller
             'disease_name'  => $diseaseName,
             'disease_image' => $imagePath,
             'customer_note' => $request->customer_note,
-            'temp'          => $request->temp,
-            'hum'           => $request->hum,
-            'soil'          => $request->soil,
         ]);
+
+        // Send Push Notification to other supervisors in the district
+        try {
+            $supervisor = \App\Models\User::find($request->user_id);
+            if ($supervisor && !empty($supervisor->district)) {
+                $firebaseService = new \App\Services\FirebaseService();
+                $topic = 'district_' . $supervisor->district;
+                $title = "New Disease Reported in " . $supervisor->district;
+                $body = "Supervisor " . $supervisor->username . " reported " . $diseaseName;
+                
+                $firebaseService->sendNotificationToTopic($topic, $title, $body, [
+                    'report_id' => (string)$report->id,
+                    'disease' => $diseaseName,
+                    'supervisor' => $supervisor->username,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("FCM Notification failed: " . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Disease report saved successfully',
@@ -146,9 +159,6 @@ class DiseaseReportController extends Controller
                 'customer_note' => $report->customer_note,
                 'recommend_solutions' => $solutions,
                 'created_at' => $report->created_at,
-                'temp' => $report->temp,
-                'hum' => $report->hum,
-                'soil' => $report->soil,
             ];
         });
 
@@ -156,5 +166,97 @@ class DiseaseReportController extends Controller
             'success' => true,
             'data' => $data
         ]);
+    }
+
+    /**
+     * Get all disease reports/alerts in the supervisor's district.
+     */
+    public function getDistrictAlerts(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'supervisor_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $supervisor = \App\Models\User::find($request->supervisor_id);
+        $district = $supervisor->district;
+
+        if (empty($district)) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ]);
+        }
+
+        // Fetch reports where the reporter's district OR the farmer's district matches
+        $reports = DiseaseReport::with(['farmer', 'user'])
+            ->where(function($query) use ($district) {
+                $query->whereHas('user', function($q) use ($district) {
+                    $q->where('district', $district);
+                })->orWhereHas('farmer', function($q) use ($district) {
+                    $q->where('district', $district);
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Fetch all standard diseases to do fuzzy matching for solutions
+        $allDiseases = \App\Models\Disease::all();
+
+        $data = $reports->map(function ($report) use ($allDiseases) {
+            $solutions = 'No solutions available';
+            
+            if ($report->diseaseInfo) {
+                $solutions = $report->diseaseInfo->solutions;
+            } else {
+                $normalizedReportName = strtolower(str_replace(['_', ' '], '', $report->disease_name));
+                
+                $matchedDisease = $allDiseases->first(function ($disease) use ($normalizedReportName) {
+                    $normalizedDbName = strtolower(str_replace(['_', ' '], '', $disease->name));
+                    return $normalizedDbName === $normalizedReportName;
+                });
+
+                if ($matchedDisease) {
+                    $solutions = $matchedDisease->solutions;
+                }
+            }
+
+            return [
+                'id' => $report->id,
+                'farmer' => $report->farmer ? $report->farmer->name : ($report->user ? $report->user->username : 'Unknown'),
+                'disease' => $report->disease_name,
+                'severity' => $this->calculateSeverity($report->disease_name),
+                'time' => $report->created_at->diffForHumans(),
+                'created_at' => $report->created_at->toIso8601String(),
+                'read' => false,
+                'district' => $report->farmer ? $report->farmer->district : ($report->user ? $report->user->district : 'Unknown'),
+                'image' => $report->disease_image ? url($report->disease_image) : null,
+                'note' => $report->customer_note ?? '',
+                'solutions' => $solutions,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    private function calculateSeverity($diseaseName)
+    {
+        $normalized = strtolower(str_replace([' ', '_'], '', $diseaseName));
+        if (str_contains($normalized, 'blight')) {
+            return 'High';
+        }
+        if (str_contains($normalized, 'blast')) {
+            return 'High';
+        }
+        if (str_contains($normalized, 'spot')) {
+            return 'Medium';
+        }
+        return 'Low';
     }
 }

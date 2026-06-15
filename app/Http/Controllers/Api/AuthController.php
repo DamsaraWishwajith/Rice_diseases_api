@@ -73,4 +73,36 @@ class AuthController extends Controller
             'token' => $token,
         ], 200);
     }
+
+    /**
+     * Update user profile.
+     */
+    public function updateProfile(Request $request, $id)
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string|max:255|unique:users,username,' . $id,
+            'district' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $user->update([
+            'username' => $request->username,
+            'district' => $request->district,
+        ]);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user,
+        ], 200);
+    }
 }
