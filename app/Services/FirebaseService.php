@@ -102,6 +102,12 @@ class FirebaseService
                     'title' => $title,
                     'body' => $body,
                 ],
+                'android' => [
+                    'notification' => [
+                        'icon' => 'ic_launcher',
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                    ],
+                ],
                 'data' => array_map('strval', $data),
             ]
         ];
