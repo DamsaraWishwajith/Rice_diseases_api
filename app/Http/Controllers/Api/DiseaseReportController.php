@@ -174,17 +174,24 @@ class DiseaseReportController extends Controller
     public function getFarmerReports(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'farmer_id' => 'required|exists:farmers,id',
+            'farmer_id'     => 'required|exists:farmers,id',
+            'supervisor_id' => 'nullable|exists:users,id',
+            'user_id'       => 'nullable|exists:users,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $reports = DiseaseReport::with(['farmer', 'diseaseInfo'])
-            ->where('farmer_id', $request->farmer_id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = DiseaseReport::with(['farmer', 'diseaseInfo'])
+            ->where('farmer_id', $request->farmer_id);
+
+        $supervisorId = $request->input('supervisor_id') ?? $request->input('user_id');
+        if ($supervisorId) {
+            $query->where('user_id', $supervisorId);
+        }
+
+        $reports = $query->orderBy('created_at', 'desc')->get();
 
         $allDiseases = \App\Models\Disease::all();
 
@@ -208,6 +215,7 @@ class DiseaseReportController extends Controller
 
             return [
                 'report_id'           => $report->id,
+                'user_id'             => $report->user_id,
                 'farmer_id'           => $report->farmer_id,
                 'farmer_name'         => $report->farmer ? $report->farmer->name : 'Unknown',
                 'disease_name'        => $report->disease_name,
