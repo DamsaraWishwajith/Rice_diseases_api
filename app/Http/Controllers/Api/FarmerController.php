@@ -15,10 +15,28 @@ class FarmerController extends Controller
      */
     public function index()
     {
-        // For now, listing all farmers. 
-        // In a real app, you'd likely filter by the logged-in supervisor.
-        $farmers = Farmer::with('supervisor')->get();
-        return response()->json($farmers);
+        $farmers = Farmer::with(['supervisor', 'diseaseReports' => function($q) {
+            $q->orderBy('created_at', 'desc');
+        }])->get();
+
+        $data = $farmers->map(function ($farmer) {
+            $reports      = $farmer->diseaseReports;
+            $scansCount   = $reports->count();
+            $latestReport = $reports->first(); // already sorted desc
+
+            // Most recent disease (not Healthy)
+            $activeDisease = $reports->first(function ($r) {
+                return !in_array(strtolower($r->disease_name), ['healthy', 'none', '']);
+            });
+
+            return array_merge($farmer->toArray(), [
+                'scans'     => $scansCount,
+                'disease'   => $activeDisease ? $activeDisease->disease_name : 'None',
+                'last_scan' => $latestReport ? $latestReport->created_at : null,
+            ]);
+        });
+
+        return response()->json($data);
     }
 
     /**

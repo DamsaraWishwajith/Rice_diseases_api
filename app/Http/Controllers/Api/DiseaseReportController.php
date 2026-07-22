@@ -169,6 +169,62 @@ class DiseaseReportController extends Controller
     }
 
     /**
+     * Get all disease reports for a specific farmer.
+     */
+    public function getFarmerReports(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'farmer_id' => 'required|exists:farmers,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $reports = DiseaseReport::with(['farmer', 'diseaseInfo'])
+            ->where('farmer_id', $request->farmer_id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $allDiseases = \App\Models\Disease::all();
+
+        $data = $reports->map(function ($report) use ($allDiseases) {
+            $solutions = 'No solutions available';
+
+            if ($report->diseaseInfo) {
+                $solutions = $report->diseaseInfo->solutions;
+            } else {
+                $normalizedReportName = strtolower(str_replace(['_', ' '], '', $report->disease_name));
+
+                $matchedDisease = $allDiseases->first(function ($disease) use ($normalizedReportName) {
+                    $normalizedDbName = strtolower(str_replace(['_', ' '], '', $disease->name));
+                    return $normalizedDbName === $normalizedReportName;
+                });
+
+                if ($matchedDisease) {
+                    $solutions = $matchedDisease->solutions;
+                }
+            }
+
+            return [
+                'report_id'           => $report->id,
+                'farmer_id'           => $report->farmer_id,
+                'farmer_name'         => $report->farmer ? $report->farmer->name : 'Unknown',
+                'disease_name'        => $report->disease_name,
+                'disease_image'       => $report->disease_image ? url($report->disease_image) : null,
+                'customer_note'       => $report->customer_note,
+                'recommend_solutions' => $solutions,
+                'created_at'          => $report->created_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    /**
      * Get all disease reports/alerts in the supervisor's district.
      */
     public function getDistrictAlerts(Request $request)

@@ -21,6 +21,7 @@ Route::get('/disease-reports', [DiseaseReportController::class, 'index']);
 Route::post('/disease-reports', [DiseaseReportController::class, 'store']);
 Route::post('/get-supervisor-reports', [DiseaseReportController::class, 'getSupervisorReports']);
 Route::post('/get-district-alerts', [DiseaseReportController::class, 'getDistrictAlerts']);
+Route::post('/get-farmer-reports', [DiseaseReportController::class, 'getFarmerReports']);
 
 Route::get('/test-fcm', function (Illuminate\Http\Request $request) {
     $district = $request->query('district', 'Anuradhapura');
